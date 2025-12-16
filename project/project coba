@@ -1,0 +1,93 @@
+import tkinter as tk
+from tkinter import messagebox
+
+def hitung_status_kelulusan():
+    """Fungsi ini dipanggil saat tombol 'Hitung Status' ditekan."""
+    try:
+        # Mengambil data dari widget input
+        nama = entry_nama.get()
+        mapel = entry_mapel.get()
+        nilai = float(entry_nilai.get())
+
+        # Memvalidasi input nilai
+        if not (0 <= nilai <= 100):
+            messagebox.showerror("Kesalahan Input", "Nilai ujian harus antara 0 dan 100.")
+            return
+            
+        # Menentukan status dan grade berdasarkan kriteria yang diberikan
+        if nilai >= 95:
+            status_kelulusan = "LULUS"
+            grade = "A"
+        elif nilai >= 85: # Mencakup 85-94
+            status_kelulusan = "LULUS"
+            grade = "A-"
+        elif nilai >= 80: # Mencakup 80-84
+            status_kelulusan = "LULUS"
+            grade = "B+"
+        elif nilai >= 75: # Mencakup 75-79
+            status_kelulusan = "LULUS"
+            grade = "B"
+        else: # Nilai < 75
+            status_kelulusan = "TIDAK LULUS"
+            grade = "C (Gagal)"
+
+        # Menampilkan hasil di area teks output
+        hasil_text = f"Nama: {nama}\n"
+        hasil_text += f"Mata Pelajaran: {mapel}\n"
+        hasil_text += f"Nilai Akhir: {nilai:.2f}\n"
+        hasil_text += f"Status: {status_kelulusan}\n"
+        hasil_text += f"Grade: {grade}"
+
+        # Memperbarui widget Text
+        output_box.config(state=tk.NORMAL) # Memungkinkan edit sementara
+        output_box.delete('1.0', tk.END) # Hapus konten lama
+        output_box.insert(tk.END, hasil_text) # Masukkan konten baru
+        output_box.config(state=tk.DISABLED) # Nonaktifkan edit oleh user
+        
+    except ValueError:
+        # Menangani jika input nilai bukan angka yang valid
+        messagebox.showerror("Kesalahan Input", "Masukkan nilai ujian dalam format angka yang benar.")
+
+# --- Setup GUI ---
+
+# Membuat jendela utama
+root = tk.Tk()
+root.title("Aplikasi Penilaian Kelulusan Siswa (GUI)")
+root.geometry("400x450") # Mengatur ukuran jendela
+
+# Frame untuk menampung input
+frame_input = tk.Frame(root, padx=10, pady=10)
+frame_input.pack(pady=10)
+
+# Label dan Entry (Input) Nama Siswa
+label_nama = tk.Label(frame_input, text="Nama Siswa:")
+label_nama.grid(row=0, column=0, sticky=tk.W, pady=5)
+entry_nama = tk.Entry(frame_input, width=30)
+entry_nama.grid(row=0, column=1, pady=5)
+
+# Label dan Entry (Input) Mata Pelajaran
+label_mapel = tk.Label(frame_input, text="Mata Pelajaran:")
+label_mapel.grid(row=1, column=0, sticky=tk.W, pady=5)
+entry_mapel = tk.Entry(frame_input, width=30)
+entry_mapel.grid(row=1, column=1, pady=5)
+
+# Label dan Entry (Input) Nilai Ujian Final
+label_nilai = tk.Label(frame_input, text="Nilai Ujian Final:")
+label_nilai.grid(row=2, column=0, sticky=tk.W, pady=5)
+entry_nilai = tk.Entry(frame_input, width=30)
+entry_nilai.grid(row=2, column=1, pady=5)
+
+# Tombol untuk menjalankan fungsi perhitungan
+button_hitung = tk.Button(root, text="Hitung Status Kelulusan", command=hitung_status_kelulusan)
+button_hitung.pack(pady=10)
+
+# Area Output (menggunakan widget Text agar bisa menampilkan multiline)
+label_hasil = tk.Label(root, text="Hasil Penilaian:")
+label_hasil.pack(pady=5)
+
+output_box = tk.Text(root, height=10, width=45, padx=5, pady=5, state=tk.DISABLED)
+output_box.pack(pady=10)
+
+# Menjalankan loop utama GUI
+root.mainloop()
+

@@ -1,0 +1,158 @@
+import tkinter as tk
+from tkinter import messagebox, filedialog
+import pandas as pd
+import os
+from openpyxl import load_workbook
+from openpyxl.styles import PatternFill
+
+# --- Konfigurasi Jalur File ---
+# SESUAIKAN JALUR INI PERSIS SEPERTI YANG ANDA MINTA:
+PATH_DATA_PELAJAR_MASTER = r"C:\Users\Administrator\Documents\Learning Pyhton coding studio 15Nov25\project\data_pelajar.xlsx"
+PATH_OUTPUT_HASIL = "hasil_ujian.xlsx" # File output baru akan dibuat di folder yang sama dengan script ini
+
+def validasi_nama_dari_excel(nama):
+    """Memeriksa apakah nama pelajar ada di file data_pelajar.xlsx."""
+    try:
+        df = pd.read_excel(PATH_DATA_PELAJAR_MASTER)
+        # Memeriksa apakah nama yang diinput ada di kolom 'nama_pelajar'
+        if nama in df['nama_pelajar'].values: 
+            return True
+        else:
+            return False
+    except FileNotFoundError:
+        messagebox.showerror("Kesalahan File", f"File data pelajar tidak ditemukan di:\n{PATH_DATA_PELAJAR_MASTER}")
+        return False
+    except Exception as e:
+        messagebox.showerror("Kesalahan Membaca Excel", f"Terjadi kesalahan saat membaca file Excel: {e}")
+        return False
+
+def simpan_dan_warnai_excel(data_baru):
+    """Menyimpan data baru ke file output dan memberi warna baris."""
+    
+    # 1. Menentukan warna berdasarkan nilai >= 75
+    nilai = data_baru['nilai_ujian_final']
+    if nilai >= 75:
+        warna_hex = "C6EFCE" # Hijau muda HEX (standar Excel)
+    else:
+        warna_hex = "FFFFFF" # Putih (atau warna standar)
+
+    try:
+        # Baca file yang sudah ada atau buat DataFrame baru
+        if os.path.exists(PATH_OUTPUT_HASIL):
+            df_existing = pd.read_excel(PATH_OUTPUT_HASIL, engine='openpyxl')
+            df_new = pd.concat([df_existing, pd.DataFrame([data_baru])], ignore_index=True)
+        else:
+            df_new = pd.DataFrame([data_baru])
+        
+        # Simpan DataFrame ke file XLSX
+        df_new.to_excel(PATH_OUTPUT_HASIL, index=False, engine='openpyxl')
+
+        # 2. Pewarnaan sel menggunakan openpyxl (hanya berfungsi untuk .xlsx)
+        wb = load_workbook(PATH_OUTPUT_HASIL)
+        ws = wb.active
+        
+        # Terapkan warna ke baris terakhir yang baru ditambahkan
+        last_row = ws.max_row
+        fill = PatternFill(start_color=warna_hex, end_color=warna_hex, fill_type="solid")
+        
+        # Iterasi melalui kolom yang relevan (A, B, C, D, E) untuk mewarnai satu baris penuh
+        for col_cell in ['A', 'B', 'C', 'D', 'E']:
+             ws[f'{col_cell}{last_row}'].fill = fill
+            
+        wb.save(PATH_OUTPUT_HASIL)
+        
+    except Exception as e:
+        messagebox.showerror("Kesalahan Output Excel", f"Gagal menyimpan file output: {e}")
+
+
+def proses_penilaian():
+    """Fungsi utama yang dipanggil oleh tombol GUI."""
+    try:
+        tanggal_ujian = entry_tanggal.get()
+        nama_pelajar = entry_nama.get()
+        mata_pelajaran = entry_mapel.get()
+        nilai_ujian = float(entry_nilai.get())
+
+        if not (0 <= nilai_ujian <= 100):
+            messagebox.showerror("Kesalahan Input", "Nilai ujian harus antara 0 dan 100.")
+            return
+            
+        # --- VALIDASI NAMA PELAJAR DARI EXCEL MASTER ---
+        if not validasi_nama_dari_excel(nama_pelajar):
+            # Tampilkan pesan spesifik di GUI jika nama tidak ditemukan
+            output_box.config(state=tk.NORMAL)
+            output_box.delete('1.0', tk.END)
+            output_box.insert(tk.END, ">>> ERROR: nama pelajar tidak diketahui <<<")
+            output_box.config(state=tk.DISABLED)
+            messagebox.showwarning("Validasi Gagal", "Nama pelajar tidak diketahui dalam database master.")
+            return
+
+        # --- Logika Penilaian ---
+        if nilai_ujian >= 95:
+            status_kelulusan = "A / Lulus (Sempurna)"
+        elif nilai_ujian >= 85:
+            status_kelulusan = "A- / Lulus (Sangat Memuaskan)"
+        elif nilai_ujian >= 80:
+            status_kelulusan = "B+ / Lulus (Memuaskan)"
+        elif nilai_ujian >= 75:
+            status_kelulusan = "B / Lulus (Cukup)"
+        else:
+            status_kelulusan = "Tidak Lulus"
+
+        # Tampilkan hasil di GUI
+        hasil_text = f"Nama: {nama_pelajar}\nMata Pelajaran: {mata_pelajaran}\nNilai: {nilai_ujian}\nStatus: {status_kelulusan}"
+        output_box.config(state=tk.NORMAL)
+        output_box.delete('1.0', tk.END)
+        output_box.insert(tk.END, hasil_text)
+        output_box.config(state=tk.DISABLED)
+
+        # --- Siapkan data untuk disimpan ---
+        data_untuk_disimpan = {
+            'tanggal_ujian': tanggal_ujian,
+            'nama_pelajar': nama_pelajar,
+            'mata_pelajaran': mata_pelajaran,
+            'nilai_ujian_final': nilai_ujian, # Kolom tambahan untuk membantu pewarnaan
+            'status_kelulusan': status_kelulusan
+        }
+        
+        # Simpan ke Excel Baru dengan Pewarnaan
+        simpan_dan_warnai_excel(data_untuk_disimpan)
+        
+    except ValueError:
+        messagebox.showerror("Kesalahan Input", "Pastikan semua data terisi dengan benar (nilai harus angka).")
+
+# --- Setup GUI Tkinter ---
+
+root = tk.Tk()
+root.title("Aplikasi Penilaian Kelulusan Siswa")
+root.geometry("450x520")
+
+frame_input = tk.Frame(root, padx=10, pady=10)
+frame_input.pack(pady=10, fill=tk.BOTH)
+
+def create_input_row(parent, row, label_text):
+    label = tk.Label(parent, text=label_text, anchor='w')
+    label.grid(row=row, column=0, sticky=tk.W, pady=5, padx=5)
+    entry = tk.Entry(parent, width=35)
+    entry.grid(row=row, column=1, pady=5, padx=5)
+    return entry
+
+# Bidang Input
+entry_tanggal = create_input_row(frame_input, 0, "Tanggal Ujian (DD-MM-YYYY):")
+entry_nama = create_input_row(frame_input, 1, "Nama Pelajar (Harus Valid):")
+entry_mapel = create_input_row(frame_input, 2, "Mata Pelajaran:")
+entry_nilai = create_input_row(frame_input, 3, "Nilai Ujian Final (0-100):")
+
+# Tombol Proses
+button_proses = tk.Button(root, text="Proses, Validasi & Simpan Data", command=proses_penilaian)
+button_proses.pack(pady=15)
+
+# Area Output
+label_hasil = tk.Label(root, text="Hasil Penilaian & Status:")
+label_hasil.pack(pady=5)
+
+output_box = tk.Text(root, height=10, width=50, padx=5, pady=5, state=tk.DISABLED, bg='light gray')
+output_box.pack(pady=10, padx=10)
+
+# Menjalankan loop utama GUI
+root.mainloop()

@@ -1,0 +1,121 @@
+import tkinter as tk
+from tkinter import messagebox
+import openpyxl
+from openpyxl.styles import PatternFill
+import os
+
+# Path file
+DATA_PELAJAR_PATH = r"C:\Users\Administrator\Documents\Learning Pyhton coding studio 15Nov25\project\data_pelajar.xlsx"
+HASIL_UJIAN_PATH = r"C:\Users\Administrator\Documents\Learning Pyhton coding studio 15Nov25\project\hasil_ujian.xlsx"
+
+# Fungsi untuk membaca daftar nama pelajar dari Excel
+def baca_daftar_pelajar():
+    if not os.path.exists(DATA_PELAJAR_PATH):
+        messagebox.showerror("Error", f"File {DATA_PELAJAR_PATH} tidak ditemukan!")
+        return []
+    wb = openpyxl.load_workbook(DATA_PELAJAR_PATH)
+    sheet = wb.active
+    daftar_nama = []
+    for row in sheet.iter_rows(min_row=2, values_only=True):  # Asumsi baris 1 adalah header, kolom A adalah nama
+        if row[0]:  # Kolom pertama (nama pelajar)
+            daftar_nama.append(row[0].strip().lower())
+    wb.close()
+    return daftar_nama
+
+# Fungsi untuk menentukan status kelulusan
+def tentukan_status(nilai):
+    if nilai >= 95:
+        return "A / Lulus (Sempurna)"
+    elif 85 <= nilai <= 94:
+        return "A- / Lulus (Sangat Memuaskan)"
+    elif 80 <= nilai <= 84:
+        return "B+ / Lulus (Memuaskan)"
+    elif 75 <= nilai <= 79:
+        return "B / Lulus (Cukup)"
+    else:
+        return "Tidak Lulus"
+
+# Fungsi untuk menyimpan hasil ke Excel dengan pewarnaan
+def simpan_hasil(tanggal, nama, mata_pelajaran, status, nilai):
+    wb = openpyxl.Workbook()
+    sheet = wb.active
+    sheet.title = "Hasil Ujian"
+    
+    # Header
+    sheet['A1'] = 'Tanggal Ujian'
+    sheet['B1'] = 'Nama Pelajar'
+    sheet['C1'] = 'Mata Pelajaran'
+    sheet['D1'] = 'Status Kelulusan'
+    
+    # Data
+    sheet['A2'] = tanggal
+    sheet['B2'] = nama
+    sheet['C2'] = mata_pelajaran
+    sheet['D2'] = status
+    
+    # Pewarnaan: Jika nilai >= 75, warnai seluruh baris hijau
+    if nilai >= 75:
+        fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")  # Hijau
+        for cell in sheet[2]:  # Baris 2
+            cell.fill = fill
+    
+    wb.save(HASIL_UJIAN_PATH)
+    wb.close()
+
+# Fungsi untuk submit data
+def submit():
+    tanggal = entry_tanggal.get().strip()
+    nama = entry_nama.get().strip()
+    mata_pelajaran = entry_mata.get().strip()
+    try:
+        nilai = float(entry_nilai.get().strip())
+    except ValueError:
+        messagebox.showerror("Error", "Nilai ujian harus berupa angka!")
+        return
+    
+    if not tanggal or not nama or not mata_pelajaran:
+        messagebox.showerror("Error", "Semua field harus diisi!")
+        return
+    
+    daftar_nama = baca_daftar_pelajar()
+    if nama.lower() not in daftar_nama:
+        messagebox.showerror("Error", "Nama pelajar tidak diketahui!")
+        return
+    
+    status = tentukan_status(nilai)
+    simpan_hasil(tanggal, nama, mata_pelajaran, status, nilai)
+    
+    # Tampilkan hasil pada GUI
+    result_label.config(text=f"Status Kelulusan: {status}")
+    messagebox.showinfo("Sukses", f"Data berhasil disimpan ke {HASIL_UJIAN_PATH}")
+
+# GUI dengan Tkinter
+root = tk.Tk()
+root.title("Penilaian Kelulusan Siswa")
+root.geometry("400x300")
+
+# Label dan Entry
+tk.Label(root, text="Tanggal Ujian (YYYY-MM-DD):").pack(pady=5)
+entry_tanggal = tk.Entry(root)
+entry_tanggal.pack(pady=5)
+
+tk.Label(root, text="Nama Pelajar:").pack(pady=5)
+entry_nama = tk.Entry(root)
+entry_nama.pack(pady=5)
+
+tk.Label(root, text="Mata Pelajaran:").pack(pady=5)
+entry_mata = tk.Entry(root)
+entry_mata.pack(pady=5)
+
+tk.Label(root, text="Nilai Ujian Final:").pack(pady=5)
+entry_nilai = tk.Entry(root)
+entry_nilai.pack(pady=5)
+
+# Tombol Submit
+tk.Button(root, text="Submit", command=submit).pack(pady=10)
+
+# Label untuk hasil
+result_label = tk.Label(root, text="")
+result_label.pack(pady=10)
+
+root.mainloop()
